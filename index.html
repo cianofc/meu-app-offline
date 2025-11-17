@@ -1,0 +1,1960 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Art Touch - App de Desenho</title><!-- SDK Dependencies -->
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .drawing-canvas {
+            touch-action: none;
+            cursor: crosshair;
+            display: block;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+        }
+        
+        .drawing-canvas.disabled {
+            cursor: default;
+        }
+        
+        .floating-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            border: none;
+            backdrop-filter: blur(10px);
+            user-select: none;
+            touch-action: none;
+        }
+        
+        .floating-button.dragging {
+            cursor: grabbing;
+            transition: none;
+            transform: scale(1.1);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.7);
+        }
+        
+        .floating-button:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+        }
+        
+        .floating-icon {
+            width: 28px;
+            height: 28px;
+            fill: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .tools-drawer {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+            padding: 20px;
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+        
+        .tools-drawer.open {
+            left: 0;
+        }
+        
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 998;
+            backdrop-filter: blur(2px);
+        }
+        
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .drawer-header {
+            margin-bottom: 30px;
+        }
+        
+        .drawer-title {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin: 0;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        
+        .interface-settings {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .compact-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #fff;
+            cursor: pointer;
+        }
+        
+        .settings-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .main-controls {
+            margin-bottom: 25px;
+        }
+        
+        .drawing-mode-section {
+            margin-bottom: 20px;
+        }
+        
+        .drawing-mode-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .colors-management {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .color-button {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .color-button:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .color-button.selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+            transform: scale(1.15);
+        }
+        
+        .color-picker-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .color-picker {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .color-picker:hover {
+            transform: scale(1.1) translateY(-2px);
+        }
+        
+        .color-picker input[type="color"] {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            width: 55px;
+            height: 55px;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+        }
+        
+        .color-picker::after {
+            content: '🎨';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .history-access-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+        
+        .history-management {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .history-toggle-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            padding: 8px;
+            min-width: 40px;
+            flex-shrink: 0;
+        }
+        
+        .history-grid-container {
+            transition: all 0.3s ease;
+        }
+        
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+        
+        .drawer-history-color {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .drawer-history-color:hover {
+            transform: scale(1.1);
+        }
+        
+        .drawer-history-color.selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .brush-configuration {
+            margin-bottom: 25px;
+        }
+        
+        .brush-header {
+            margin-bottom: 15px;
+        }
+        
+        .brush-controls {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .brush-size-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            transition: background 0.3s ease;
+        }
+        
+        .brush-size-slider:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        
+        .brush-size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .brush-size-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .brush-size-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .tool-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tool-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tool-button.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        .advanced-tools {
+            margin-bottom: 25px;
+        }
+        
+        .tools-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .bucket-fill-btn:hover {
+            background: rgba(255, 193, 7, 0.2);
+        }
+        
+        .eraser-btn:hover {
+            background: rgba(220, 53, 69, 0.2);
+        }
+        
+        .canvas-management {
+            margin-bottom: 20px;
+        }
+        
+        .clear-canvas-btn {
+            width: 100%;
+            background: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.5);
+        }
+        
+        .clear-canvas-btn:hover {
+            background: rgba(220, 53, 69, 0.3);
+            border-color: rgba(220, 53, 69, 0.7);
+        }
+        
+        .section-title {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 15px 0;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .compact-menu {
+            position: fixed;
+            top: 20px;
+            left: 90px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            padding: 8px 15px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            transform: translateX(-20px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+            max-width: calc(100vw - 120px);
+            overflow: hidden;
+        }
+        
+        .compact-menu.show {
+            transform: translateX(0);
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .compact-tools-container {
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .compact-tools-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .compact-tools {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 2px 0;
+            min-width: max-content;
+        }
+        
+        .compact-tool {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .compact-tool:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .compact-tool.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+        }
+        
+
+        
+        .compact-color:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .compact-color.selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+
+        
+        .compact-color-picker:hover {
+            transform: scale(1.1) translateY(-2px);
+        }
+        
+        .compact-color-picker input[type="color"] {
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            width: 41px;
+            height: 41px;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+        }
+        
+        .compact-color-picker::after {
+            content: '🎨';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .tool-separator {
+            width: 2px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 1px;
+            flex-shrink: 0;
+        }
+        
+        .brush-size-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .brush-size-btn {
+            font-size: 12px !important;
+            transition: all 0.3s ease;
+        }
+        
+        .brush-size-btn[data-size="2"] {
+            font-size: 8px !important;
+        }
+        
+        .brush-size-btn[data-size="5"] {
+            font-size: 12px !important;
+        }
+        
+        .brush-size-btn[data-size="15"] {
+            font-size: 18px !important;
+        }
+        
+        .brush-size-btn[data-size="30"] {
+            font-size: 24px !important;
+        }
+        
+        .brush-size-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        
+        .pencil-icon {
+            font-size: 16px !important;
+        }
+        
+        .colors-item {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+        
+        .colors-item.colors-hidden {
+            opacity: 0;
+            transform: translateX(-100px) scale(0.5);
+            pointer-events: none;
+            width: 0 !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
+            max-width: 0 !important;
+        }
+        
+        .colors-item.colors-visible {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            pointer-events: all;
+            width: auto;
+            min-width: auto;
+            max-width: none;
+        }
+        
+        .compact-color {
+            width: 35px !important;
+            height: 35px !important;
+            min-width: 35px !important;
+            min-height: 35px !important;
+            max-width: 35px !important;
+            max-height: 35px !important;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .compact-color-picker {
+            width: 35px !important;
+            height: 35px !important;
+            min-width: 35px !important;
+            min-height: 35px !important;
+            max-width: 35px !important;
+            max-height: 35px !important;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        #compact-history-toggle {
+            display: flex !important;
+            opacity: 1 !important;
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            height: 40px !important;
+            transform: none !important;
+            pointer-events: all !important;
+            visibility: visible !important;
+            position: relative !important;
+            flex-shrink: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+        }
+        
+        #compact-history-toggle.colors-item {
+            display: flex !important;
+            opacity: 1 !important;
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            transform: none !important;
+            pointer-events: all !important;
+            visibility: visible !important;
+        }
+        
+        #compact-history-toggle.colors-hidden {
+            display: flex !important;
+            opacity: 1 !important;
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            transform: none !important;
+            pointer-events: all !important;
+            visibility: visible !important;
+        }
+        
+        .compact-tools .colors-item.colors-hidden:not(#compact-history-toggle) {
+            display: none !important;
+        }
+        
+        .compact-tools .colors-item.colors-visible {
+            display: flex !important;
+        }
+        
+        .compact-tools #compact-history-toggle {
+            display: flex !important;
+        }
+        
+        .compact-history-scroll {
+            max-width: 210px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .compact-history-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .compact-history-colors {
+            display: flex;
+            gap: 12px;
+            padding: 2px 0;
+            min-width: max-content;
+        }
+        
+        .history-color {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .history-color:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .history-color.selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        @media (max-width: 768px) {
+            .floating-button {
+                width: 50px;
+                height: 50px;
+                top: 15px;
+                left: 15px;
+            }
+            
+            .floating-icon {
+                width: 24px;
+                height: 24px;
+            }
+            
+            .compact-menu {
+                left: 75px;
+                max-width: calc(100vw - 90px);
+                padding: 6px 12px;
+            }
+            
+            .compact-tools {
+                gap: 8px;
+            }
+            
+            .compact-tool {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+            
+            .compact-color {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .compact-color-picker {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .tools-drawer {
+                width: 260px;
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .compact-menu {
+                border-radius: 20px;
+                padding: 4px 8px;
+            }
+            
+            .compact-tools {
+                gap: 6px;
+            }
+            
+            .compact-tool {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .compact-color {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .tool-separator {
+                height: 25px;
+            }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        .compact-tool:focus,
+        .tool-button:focus,
+        .color-button:focus,
+        .compact-color:focus {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+        
+        .drawing-canvas {
+            will-change: transform;
+        }
+        
+        .floating-button {
+            will-change: transform;
+        }
+        
+        .compact-menu {
+            will-change: transform, opacity;
+        }
+        
+        .tools-drawer {
+            will-change: transform;
+        }
+        
+        .creator-credits {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .creator-link {
+            display: block;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        
+        .creator-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.2);
+        }
+        
+        .creator-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .youtube-icon {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .creator-link:hover .youtube-icon {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .youtube-svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .creator-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .creator-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .creator-name {
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .creator-credits {
+                margin-top: 15px;
+                padding: 12px;
+            }
+            
+            .creator-content {
+                gap: 10px;
+            }
+            
+            .youtube-icon {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .youtube-svg {
+                width: 20px;
+                height: 20px;
+            }
+            
+            .creator-label {
+                font-size: 11px;
+            }
+            
+            .creator-name {
+                font-size: 13px;
+            }
+        }
+        
+
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full w-full bg-white"><!-- Main Canvas Container -->
+  <div id="canvas-container" class="canvas-wrapper"><!-- App Title -->
+   <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
+    <h1 class="text-3xl font-bold text-gray-800 opacity-60 text-center tracking-wide">✨ Art Touch ✨</h1>
+   </div>
+   <canvas id="drawing-canvas" class="drawing-canvas w-full h-full block"></canvas>
+  </div><!-- Floating Action Button --> <button id="floating-btn" class="floating-button" aria-label="Abrir Menu de Ferramentas">
+   <svg viewbox="0 0 24 24" class="floating-icon"><path d="M3,17.25V21h3.75L17.81,9.94l-3.75-3.75L3,17.25z M20.71,7.04c0.39-0.39,0.39-1.02,0-1.41l-2.34-2.34 c-0.39-0.39-1.02-0.39-1.41,0l-1.83,1.83l3.75,3.75L20.71,7.04z" />
+   </svg></button> <!-- Drawer Overlay -->
+  <div id="drawer-overlay" class="drawer-overlay"></div><!-- Compact Horizontal Menu -->
+  <nav id="compact-menu" class="compact-menu" role="navigation" aria-label="Menu Compacto">
+   <div class="compact-tools-container">
+    <div class="compact-tools"><!-- Drawing Mode Toggle --> <button id="compact-pencil" class="compact-tool active pencil-icon" title="Modo Desenho" aria-label="Ativar Modo Desenho">✏️</button>
+     <div class="tool-separator"></div><!-- Primary Color Palette -->
+     <div class="color-palette-section"><button class="compact-color selected colors-item" style="background-color: #000000" data-color="#000000" title="Preto" aria-label="Selecionar Cor Preta"></button> <button class="compact-color colors-item" style="background-color: #ef4444" data-color="#ef4444" title="Vermelho" aria-label="Selecionar Cor Vermelha"></button> <button class="compact-color colors-item" style="background-color: #3b82f6" data-color="#3b82f6" title="Azul" aria-label="Selecionar Cor Azul"></button> <button class="compact-color colors-item" style="background-color: #10b981" data-color="#10b981" title="Verde" aria-label="Selecionar Cor Verde"></button>
+     </div>
+     <div class="tool-separator colors-item"></div><!-- Extended Color Palette -->
+     <div class="extended-color-palette"><button class="compact-color colors-item" style="background-color: #f59e0b" data-color="#f59e0b" title="Amarelo" aria-label="Selecionar Cor Amarela"></button> <button class="compact-color colors-item" style="background-color: #8b5cf6" data-color="#8b5cf6" title="Roxo" aria-label="Selecionar Cor Roxa"></button> <button class="compact-color colors-item" style="background-color: #ec4899" data-color="#ec4899" title="Rosa" aria-label="Selecionar Cor Rosa"></button> <button class="compact-color colors-item" style="background-color: #ffffff" data-color="#ffffff" title="Branco" aria-label="Selecionar Cor Branca"></button>
+     </div><!-- Custom Color Picker -->
+     <div class="compact-color-picker colors-item" title="Escolher Cor Personalizada"><input type="color" id="compact-custom-color" value="#000000" aria-label="Seletor de Cor Personalizada">
+     </div>
+     <div class="tool-separator colors-item"></div><!-- Color History System --> <button id="compact-history-toggle" class="compact-tool history-toggle" title="Histórico de Cores" aria-label="Mostrar Histórico de Cores">📚</button>
+     <div id="compact-history-container" class="colors-item history-container" style="display: none;">
+      <div class="tool-separator"></div>
+      <div class="compact-history-scroll">
+       <div class="compact-history-colors" id="compact-history-colors"><!-- Dynamic color history will be inserted here -->
+       </div>
+      </div>
+     </div><!-- Brush Size Controls -->
+     <div class="brush-size-controls"><button class="compact-tool brush-size-btn" data-size="2" title="Pincel Fino" aria-label="Pincel Tamanho 2px">●</button> <button class="compact-tool brush-size-btn selected" data-size="5" title="Pincel Médio" aria-label="Pincel Tamanho 5px">●</button> <button class="compact-tool brush-size-btn" data-size="15" title="Pincel Grosso" aria-label="Pincel Tamanho 15px">●</button> <button class="compact-tool brush-size-btn" data-size="30" title="Pincel Muito Grosso" aria-label="Pincel Tamanho 30px">●</button>
+     </div>
+     <div class="tool-separator"></div><!-- Advanced Tools -->
+     <div class="advanced-tools-section"><button id="compact-bucket" class="compact-tool bucket-tool" title="Balde de Tinta" aria-label="Ferramenta Balde de Tinta">🪣</button> <button id="compact-eraser" class="compact-tool eraser-tool" title="Borracha" aria-label="Ferramenta Borracha">🧽</button> <button id="compact-clear" class="compact-tool clear-tool" title="Limpar Tela" aria-label="Limpar Canvas">🗑️</button>
+     </div>
+     <div class="tool-separator"></div><!-- Navigation Controls -->
+     <div class="navigation-controls"><button id="compact-full-menu" class="compact-tool menu-toggle" title="Menu Completo" aria-label="Abrir Menu Completo">📋</button> <button id="compact-settings" class="compact-tool settings-btn" title="Configurações" aria-label="Abrir Configurações">⚙️</button>
+     </div>
+    </div>
+   </div>
+  </nav><!-- Full Feature Drawer -->
+  <aside id="tools-drawer" class="tools-drawer" role="complementary" aria-label="Menu Principal"><button id="close-drawer" class="close-button" aria-label="Fechar Menu">×</button>
+   <header class="drawer-header">
+    <h1 id="drawer-title" class="drawer-title">Art Touch</h1>
+   </header><!-- Interface Mode Settings -->
+   <section class="interface-settings"><label class="settings-toggle" for="compact-mode"> <input type="checkbox" id="compact-mode" class="compact-checkbox"> <span class="settings-label">Menu compacto</span> </label>
+   </section><!-- Main Drawing Controls -->
+   <section class="main-controls">
+    <div class="drawing-mode-section"><button id="pencil-btn" class="tool-button active drawing-mode-btn"> ✏️ Modo Desenho </button>
+    </div><!-- Color Management System -->
+    <div id="colors-section" class="colors-management">
+     <div class="color-grid" id="colors-grid"><button class="color-button selected" style="background-color: #000000" data-color="#000000" aria-label="Cor Preta"></button> <button class="color-button" style="background-color: #ef4444" data-color="#ef4444" aria-label="Cor Vermelha"></button> <button class="color-button" style="background-color: #3b82f6" data-color="#3b82f6" aria-label="Cor Azul"></button> <button class="color-button" style="background-color: #10b981" data-color="#10b981" aria-label="Cor Verde"></button> <button class="color-button" style="background-color: #f59e0b" data-color="#f59e0b" aria-label="Cor Amarela"></button> <button class="color-button" style="background-color: #8b5cf6" data-color="#8b5cf6" aria-label="Cor Roxa"></button> <button class="color-button" style="background-color: #ec4899" data-color="#ec4899" aria-label="Cor Rosa"></button> <button class="color-button" style="background-color: #ffffff" data-color="#ffffff" aria-label="Cor Branca"></button> <!-- Advanced Color Picker -->
+      <div class="color-picker-wrapper">
+       <div class="color-picker advanced-picker" title="Escolher Cor Personalizada"><input type="color" id="custom-color" value="#000000" aria-label="Seletor Avançado de Cores">
+       </div>
+      </div><!-- Color History Access --> <button id="drawer-history-icon" class="color-button history-access-btn" title="Histórico de Cores" aria-label="Acessar Histórico de Cores">📚</button>
+     </div>
+    </div>
+   </section><!-- Color History Management -->
+   <section id="drawer-history-section" class="history-management" style="display: none;">
+    <div class="history-header">
+     <h2 class="section-title">🎨 Histórico de Cores</h2><button id="drawer-history-toggle" class="tool-button history-toggle-btn">📚</button>
+    </div>
+    <div id="drawer-history-container" class="history-grid-container" style="display: none;">
+     <div class="history-grid" id="drawer-history-colors"><!-- Dynamic color history grid -->
+     </div>
+    </div>
+   </section><!-- Brush Configuration -->
+   <section id="brush-section" class="brush-configuration">
+    <div class="brush-header">
+     <h2 class="section-title">✏️ Espessura: <span id="brush-size-display">5</span>px</h2>
+    </div>
+    <div class="brush-controls"><input type="range" id="brush-size" class="brush-size-slider" min="1" max="50" value="5" aria-label="Controle de Espessura do Pincel">
+    </div>
+   </section><!-- Advanced Tools Section -->
+   <section class="advanced-tools">
+    <h2 class="section-title">🛠️ Ferramentas</h2>
+    <div class="tools-grid"><button id="bucket-btn" class="tool-button bucket-fill-btn"> 🪣 Balde de Tinta </button> <button id="eraser-btn" class="tool-button eraser-btn"> 🧽 Borracha </button>
+    </div>
+   </section><!-- Canvas Management -->
+   <section class="canvas-management"><button id="clear-btn" class="tool-button clear-canvas-btn"> 🗑️ Limpar Tela </button>
+   </section><!-- Creator Credits -->
+   <section class="creator-credits">
+    <div class="creator-link" onclick="window.open('https://youtube.com/@cianofc?si=CL_06hh8zDbr9Dw5', '_blank', 'noopener,noreferrer')" style="cursor: pointer;">
+     <div class="creator-content">
+      <div class="youtube-icon">
+       <svg viewbox="0 0 24 24" class="youtube-svg"><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+       </svg>
+      </div>
+      <div class="creator-text"><span class="creator-label">Canal do Criador:</span> <span class="creator-name">@cianofc</span>
+      </div>
+     </div>
+    </div>
+   </section>
+  </aside>
+  <script>
+        // Element SDK Configuration
+        const defaultConfig = {
+            app_title: "Art Touch",
+            clear_button_text: "🗑️ Limpar Tela"
+        };
+
+        // Drawing Engine
+        class DrawingEngine {
+            constructor() {
+                this.canvas = null;
+                this.ctx = null;
+                this.isDrawing = false;
+                this.currentColor = '#000000';
+                this.currentSize = 5;
+                this.lastX = 0;
+                this.lastY = 0;
+                
+                this.initializeCanvas();
+                this.setupEventListeners();
+            }
+
+            initializeCanvas() {
+                this.canvas = document.getElementById('drawing-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.resizeCanvas();
+                this.setupCanvasProperties();
+            }
+
+            setupCanvasProperties() {
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.imageSmoothingQuality = 'high';
+                
+                // Force white background regardless of system theme
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            resizeCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                this.canvas.width = rect.width * devicePixelRatio;
+                this.canvas.height = rect.height * devicePixelRatio;
+                this.ctx.scale(devicePixelRatio, devicePixelRatio);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+                
+                // Ensure white background after resize
+                this.setupCanvasProperties();
+            }
+
+            setupEventListeners() {
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', this.handleStart.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.handleMove.bind(this), { passive: false });
+                this.canvas.addEventListener('touchend', this.handleEnd.bind(this), { passive: false });
+                
+                // Mouse events for desktop
+                this.canvas.addEventListener('mousedown', this.handleStart.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleEnd.bind(this));
+                this.canvas.addEventListener('mouseout', this.handleEnd.bind(this));
+                
+                // Window resize handler
+                window.addEventListener('resize', this.resizeCanvas.bind(this));
+            }
+
+            getEventPosition(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            handleStart(e) {
+                if (drawingManager.isDrawerOpen) return;
+                e.preventDefault();
+                
+                const pos = this.getEventPosition(e);
+                
+                if (toolManager.isBucketMode()) {
+                    this.floodFill(pos.x, pos.y, this.currentColor);
+                    colorManager.addToHistory(this.currentColor);
+                    return;
+                }
+                
+                if (!toolManager.canDraw()) return;
+                
+                this.isDrawing = true;
+                this.lastX = pos.x;
+                this.lastY = pos.y;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(pos.x, pos.y);
+            }
+
+            handleMove(e) {
+                if (!this.isDrawing || drawingManager.isDrawerOpen || !toolManager.canDraw()) return;
+                e.preventDefault();
+                
+                const pos = this.getEventPosition(e);
+                
+                this.ctx.lineWidth = this.currentSize;
+                this.ctx.globalCompositeOperation = toolManager.isEraserMode() ? 'destination-out' : 'source-over';
+                this.ctx.strokeStyle = toolManager.isEraserMode() ? 'rgba(0,0,0,1)' : this.currentColor;
+                
+                this.ctx.lineTo(pos.x, pos.y);
+                this.ctx.stroke();
+                
+                this.lastX = pos.x;
+                this.lastY = pos.y;
+            }
+
+            handleEnd(e) {
+                if (!this.isDrawing) return;
+                e.preventDefault();
+                
+                this.isDrawing = false;
+                this.ctx.beginPath();
+            }
+
+            floodFill(startX, startY, fillColor) {
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                const pixelX = Math.floor(startX * devicePixelRatio);
+                const pixelY = Math.floor(startY * devicePixelRatio);
+                
+                if (pixelX < 0 || pixelX >= width || pixelY < 0 || pixelY >= height) return;
+                
+                const startIndex = (pixelY * width + pixelX) * 4;
+                const startR = data[startIndex];
+                const startG = data[startIndex + 1];
+                const startB = data[startIndex + 2];
+                const startA = data[startIndex + 3];
+                
+                const fillRgb = this.hexToRgb(fillColor);
+                if (!fillRgb) return;
+                
+                if (startR === fillRgb.r && startG === fillRgb.g && startB === fillRgb.b) return;
+                
+                const stack = [[pixelX, pixelY]];
+                const visited = new Set();
+                
+                while (stack.length > 0) {
+                    const [x, y] = stack.pop();
+                    const key = `${x},${y}`;
+                    
+                    if (visited.has(key) || x < 0 || x >= width || y < 0 || y >= height) continue;
+                    
+                    const index = (y * width + x) * 4;
+                    const r = data[index];
+                    const g = data[index + 1];
+                    const b = data[index + 2];
+                    const a = data[index + 3];
+                    
+                    if (r !== startR || g !== startG || b !== startB || a !== startA) continue;
+                    
+                    visited.add(key);
+                    
+                    data[index] = fillRgb.r;
+                    data[index + 1] = fillRgb.g;
+                    data[index + 2] = fillRgb.b;
+                    data[index + 3] = 255;
+                    
+                    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
+
+            clearCanvas() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            setColor(color) {
+                this.currentColor = color;
+            }
+
+            setBrushSize(size) {
+                this.currentSize = size;
+            }
+        }
+
+        // Tool Manager
+        class ToolManager {
+            constructor() {
+                this.drawingEnabled = true;
+                this.eraserEnabled = false;
+                this.bucketEnabled = false;
+                
+                this.initializeToolEvents();
+            }
+
+            initializeToolEvents() {
+                // Drawing mode toggles
+                document.getElementById('pencil-btn').addEventListener('click', () => this.toggleDrawingMode());
+                document.getElementById('compact-pencil').addEventListener('click', () => this.toggleDrawingMode());
+                
+                // Eraser mode toggles
+                document.getElementById('eraser-btn').addEventListener('click', () => this.toggleEraserMode());
+                document.getElementById('compact-eraser').addEventListener('click', () => this.toggleEraserMode());
+                
+                // Bucket mode toggles
+                document.getElementById('bucket-btn').addEventListener('click', () => this.toggleBucketMode());
+                document.getElementById('compact-bucket').addEventListener('click', () => this.toggleBucketMode());
+                
+                // Brush size controls
+                this.initializeBrushControls();
+            }
+
+            initializeBrushControls() {
+                const brushSlider = document.getElementById('brush-size');
+                const brushDisplay = document.getElementById('brush-size-display');
+                
+                brushSlider.addEventListener('input', (e) => {
+                    const size = e.target.value;
+                    drawingEngine.setBrushSize(size);
+                    brushDisplay.textContent = size;
+                    this.syncBrushButtons(size);
+                });
+                
+                // Brush size buttons
+                document.querySelectorAll('.brush-size-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const size = parseInt(button.dataset.size);
+                        drawingEngine.setBrushSize(size);
+                        brushSlider.value = size;
+                        brushDisplay.textContent = size;
+                        this.updateBrushButtonSelection(button);
+                    });
+                });
+            }
+
+            syncBrushButtons(size) {
+                document.querySelectorAll('.brush-size-btn').forEach(btn => {
+                    btn.classList.toggle('selected', parseInt(btn.dataset.size) === parseInt(size));
+                });
+            }
+
+            updateBrushButtonSelection(selectedButton) {
+                document.querySelectorAll('.brush-size-btn').forEach(btn => btn.classList.remove('selected'));
+                selectedButton.classList.add('selected');
+            }
+
+            toggleDrawingMode() {
+                this.drawingEnabled = !this.drawingEnabled;
+                
+                if (this.drawingEnabled) {
+                    this.bucketEnabled = false;
+                    this.updateToolButtons();
+                }
+                
+                this.updateCursor();
+                this.updateToolButtons();
+                uiManager.toggleColorVisibility(this.drawingEnabled);
+            }
+
+            toggleEraserMode() {
+                this.eraserEnabled = !this.eraserEnabled;
+                
+                if (this.eraserEnabled) {
+                    this.bucketEnabled = false;
+                    this.drawingEnabled = false;
+                    colorManager.clearSelection();
+                } else {
+                    colorManager.selectDefaultColor();
+                }
+                
+                this.updateToolButtons();
+                this.updateCursor();
+            }
+
+            toggleBucketMode() {
+                this.bucketEnabled = !this.bucketEnabled;
+                
+                if (this.bucketEnabled) {
+                    this.eraserEnabled = false;
+                    this.drawingEnabled = false;
+                }
+                
+                this.updateToolButtons();
+                this.updateCursor();
+            }
+
+            updateToolButtons() {
+                // Drawing mode buttons
+                document.getElementById('pencil-btn').classList.toggle('active', this.drawingEnabled);
+                document.getElementById('compact-pencil').classList.toggle('active', this.drawingEnabled);
+                
+                // Eraser mode buttons
+                document.getElementById('eraser-btn').classList.toggle('active', this.eraserEnabled);
+                document.getElementById('compact-eraser').classList.toggle('active', this.eraserEnabled);
+                
+                // Bucket mode buttons
+                document.getElementById('bucket-btn').classList.toggle('active', this.bucketEnabled);
+                document.getElementById('compact-bucket').classList.toggle('active', this.bucketEnabled);
+            }
+
+            updateCursor() {
+                const canvas = drawingEngine.canvas;
+                
+                if (this.bucketEnabled) {
+                    canvas.style.cursor = 'pointer';
+                    canvas.classList.remove('disabled');
+                } else if (this.drawingEnabled || this.eraserEnabled) {
+                    canvas.style.cursor = 'crosshair';
+                    canvas.classList.remove('disabled');
+                } else {
+                    canvas.style.cursor = 'default';
+                    canvas.classList.add('disabled');
+                }
+            }
+
+            canDraw() {
+                return this.drawingEnabled || this.eraserEnabled;
+            }
+
+            isEraserMode() {
+                return this.eraserEnabled;
+            }
+
+            isBucketMode() {
+                return this.bucketEnabled;
+            }
+        }
+
+        // Color Manager
+        class ColorManager {
+            constructor() {
+                this.currentColor = '#000000';
+                this.colorHistory = [];
+                this.isHistoryVisible = false;
+                
+                this.initializeColorEvents();
+            }
+
+            initializeColorEvents() {
+                // Main color buttons
+                document.querySelectorAll('.color-button').forEach(button => {
+                    button.addEventListener('click', () => this.selectColor(button.dataset.color, button));
+                });
+                
+                // Compact color buttons
+                document.querySelectorAll('.compact-color').forEach(button => {
+                    button.addEventListener('click', () => this.selectColor(button.dataset.color, button));
+                });
+                
+                // Custom color pickers
+                document.getElementById('custom-color').addEventListener('change', (e) => {
+                    this.selectCustomColor(e.target.value);
+                });
+                
+                document.getElementById('compact-custom-color').addEventListener('change', (e) => {
+                    this.selectCustomColor(e.target.value);
+                });
+                
+                // History toggles
+                document.getElementById('compact-history-toggle').addEventListener('click', () => {
+                    this.toggleHistoryVisibility();
+                });
+                
+                this.initializeHistoryControls();
+            }
+
+            initializeHistoryControls() {
+                const historyIcon = document.getElementById('drawer-history-icon');
+                const historyToggle = document.getElementById('drawer-history-toggle');
+                
+                historyIcon.addEventListener('click', () => this.toggleDrawerHistory());
+                historyToggle.addEventListener('click', () => this.toggleDrawerHistoryContainer());
+            }
+
+            selectColor(color, buttonElement = null) {
+                this.currentColor = color;
+                drawingEngine.setColor(color);
+                
+                // Reset tool states
+                toolManager.eraserEnabled = false;
+                toolManager.bucketEnabled = false;
+                toolManager.updateToolButtons();
+                toolManager.updateCursor();
+                
+                // Update UI selection
+                this.updateColorSelection(color);
+                this.addToHistory(color);
+            }
+
+            selectCustomColor(color) {
+                this.currentColor = color;
+                drawingEngine.setColor(color);
+                
+                // Reset tool states
+                toolManager.eraserEnabled = false;
+                toolManager.bucketEnabled = false;
+                toolManager.updateToolButtons();
+                
+                // Clear all selections
+                this.clearAllSelections();
+                this.addToHistory(color);
+                toolManager.updateCursor();
+            }
+
+            updateColorSelection(color) {
+                this.clearAllSelections();
+                
+                // Select matching color buttons
+                const mainColorBtn = document.querySelector(`.color-button[data-color="${color}"]`);
+                const compactColorBtn = document.querySelector(`.compact-color[data-color="${color}"]`);
+                
+                if (mainColorBtn) mainColorBtn.classList.add('selected');
+                if (compactColorBtn) compactColorBtn.classList.add('selected');
+            }
+
+            clearAllSelections() {
+                document.querySelectorAll('.color-button, .compact-color, .history-color, .drawer-history-color')
+                    .forEach(btn => btn.classList.remove('selected'));
+            }
+
+            clearSelection() {
+                this.clearAllSelections();
+            }
+
+            selectDefaultColor() {
+                this.selectColor('#000000');
+            }
+
+            addToHistory(color) {
+                if (this.colorHistory.includes(color)) return;
+                
+                this.colorHistory.unshift(color);
+                
+                if (this.colorHistory.length > 20) {
+                    this.colorHistory = this.colorHistory.slice(0, 20);
+                }
+                
+                this.updateHistoryDisplay();
+            }
+
+            updateHistoryDisplay() {
+                this.updateCompactHistory();
+                this.updateDrawerHistory();
+                this.toggleHistorySection();
+            }
+
+            updateCompactHistory() {
+                const container = document.getElementById('compact-history-colors');
+                container.innerHTML = '';
+                
+                this.colorHistory.forEach((color, index) => {
+                    const button = this.createHistoryButton(color, index, 'history-color');
+                    button.addEventListener('click', () => this.selectHistoryColor(color));
+                    container.appendChild(button);
+                });
+            }
+
+            updateDrawerHistory() {
+                const container = document.getElementById('drawer-history-colors');
+                container.innerHTML = '';
+                
+                this.colorHistory.forEach((color, index) => {
+                    const button = this.createHistoryButton(color, index, 'drawer-history-color');
+                    button.addEventListener('click', () => this.selectHistoryColor(color));
+                    container.appendChild(button);
+                });
+            }
+
+            createHistoryButton(color, index, className) {
+                const button = document.createElement('button');
+                button.className = className;
+                button.style.backgroundColor = color;
+                button.dataset.color = color;
+                button.title = `Cor usada ${index + 1}`;
+                button.setAttribute('aria-label', `Selecionar cor ${color}`);
+                
+                if (color === this.currentColor && !toolManager.isEraserMode()) {
+                    button.classList.add('selected');
+                }
+                
+                return button;
+            }
+
+            selectHistoryColor(color) {
+                this.selectColor(color);
+                this.updateHistorySelection(color);
+            }
+
+            updateHistorySelection(color) {
+                document.querySelectorAll('.history-color, .drawer-history-color').forEach(btn => {
+                    btn.classList.toggle('selected', btn.dataset.color === color);
+                });
+            }
+
+            toggleHistoryVisibility() {
+                this.isHistoryVisible = !this.isHistoryVisible;
+                const container = document.getElementById('compact-history-container');
+                const toggle = document.getElementById('compact-history-toggle');
+                
+                if (this.isHistoryVisible) {
+                    container.style.display = 'flex';
+                    toggle.classList.add('active');
+                    this.updateHistoryDisplay();
+                } else {
+                    container.style.display = 'none';
+                    toggle.classList.remove('active');
+                }
+            }
+
+            toggleDrawerHistory() {
+                const section = document.getElementById('drawer-history-section');
+                const container = document.getElementById('drawer-history-container');
+                const icon = document.getElementById('drawer-history-icon');
+                
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                }
+                
+                const isVisible = container.style.display !== 'none';
+                container.style.display = isVisible ? 'none' : 'block';
+                
+                this.updateHistoryIconState(icon, !isVisible);
+                this.updateHistoryDisplay();
+            }
+
+            toggleDrawerHistoryContainer() {
+                const container = document.getElementById('drawer-history-container');
+                const toggle = document.getElementById('drawer-history-toggle');
+                const icon = document.getElementById('drawer-history-icon');
+                
+                const isVisible = container.style.display !== 'none';
+                container.style.display = isVisible ? 'none' : 'block';
+                
+                toggle.classList.toggle('active', !isVisible);
+                this.updateHistoryIconState(icon, !isVisible);
+            }
+
+            updateHistoryIconState(icon, isActive) {
+                if (isActive) {
+                    icon.style.background = 'rgba(255, 255, 255, 0.9)';
+                    icon.style.color = '#667eea';
+                } else {
+                    icon.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    icon.style.color = 'white';
+                }
+            }
+
+            toggleHistorySection() {
+                const section = document.getElementById('drawer-history-section');
+                section.style.display = this.colorHistory.length > 0 ? 'block' : 'none';
+            }
+        }
+
+        // Draggable Button Manager
+        class DraggableButtonManager {
+            constructor() {
+                this.isDragging = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.currentX = 0;
+                this.currentY = 0;
+                this.button = null;
+                this.dragThreshold = 5;
+                this.hasMoved = false;
+                
+                this.initializeDragging();
+            }
+
+            initializeDragging() {
+                this.button = document.getElementById('floating-btn');
+                
+                // Mouse events
+                this.button.addEventListener('mousedown', this.handleStart.bind(this));
+                document.addEventListener('mousemove', this.handleMove.bind(this));
+                document.addEventListener('mouseup', this.handleEnd.bind(this));
+                
+                // Touch events
+                this.button.addEventListener('touchstart', this.handleStart.bind(this), { passive: false });
+                document.addEventListener('touchmove', this.handleMove.bind(this), { passive: false });
+                document.addEventListener('touchend', this.handleEnd.bind(this));
+            }
+
+            handleStart(e) {
+                e.preventDefault();
+                this.isDragging = true;
+                this.hasMoved = false;
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                this.startX = clientX - this.currentX;
+                this.startY = clientY - this.currentY;
+                
+                this.button.classList.add('dragging');
+            }
+
+            handleMove(e) {
+                if (!this.isDragging) return;
+                e.preventDefault();
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                this.currentX = clientX - this.startX;
+                this.currentY = clientY - this.startY;
+                
+                // Check if moved beyond threshold
+                const deltaX = Math.abs(clientX - (this.startX + this.currentX));
+                const deltaY = Math.abs(clientY - (this.startY + this.currentY));
+                
+                if (deltaX > this.dragThreshold || deltaY > this.dragThreshold) {
+                    this.hasMoved = true;
+                }
+                
+                // Constrain to viewport
+                const rect = this.button.getBoundingClientRect();
+                const maxX = window.innerWidth - rect.width;
+                const maxY = window.innerHeight - rect.height;
+                
+                this.currentX = Math.max(0, Math.min(this.currentX, maxX));
+                this.currentY = Math.max(0, Math.min(this.currentY, maxY));
+                
+                this.button.style.left = this.currentX + 'px';
+                this.button.style.top = this.currentY + 'px';
+            }
+
+            handleEnd(e) {
+                if (!this.isDragging) return;
+                
+                this.isDragging = false;
+                this.button.classList.remove('dragging');
+                
+                // If didn't move much, treat as click
+                if (!this.hasMoved) {
+                    setTimeout(() => {
+                        uiManager.toggleMenu();
+                    }, 50);
+                }
+                
+                this.hasMoved = false;
+            }
+        }
+
+        // UI Manager
+        class UIManager {
+            constructor() {
+                this.isCompactMode = false;
+                this.initializeUIEvents();
+            }
+
+            initializeUIEvents() {
+                // Menu toggles (click handler removed from floating button - now handled by draggable manager)
+                document.getElementById('close-drawer').addEventListener('click', () => drawingManager.closeDrawer());
+                document.getElementById('drawer-overlay').addEventListener('click', () => drawingManager.closeDrawer());
+                
+                // Compact mode toggle
+                document.getElementById('compact-mode').addEventListener('change', (e) => {
+                    this.toggleCompactMode(e.target.checked);
+                });
+                
+                // Compact menu navigation
+                document.getElementById('compact-full-menu').addEventListener('click', () => this.switchToFullMenu());
+                document.getElementById('compact-settings').addEventListener('click', () => this.openSettings());
+                
+                // Clear canvas buttons
+                document.getElementById('clear-btn').addEventListener('click', () => this.clearCanvas());
+                document.getElementById('compact-clear').addEventListener('click', () => this.clearCanvasCompact());
+                
+                // Outside click handler for compact menu
+                document.addEventListener('click', (e) => this.handleOutsideClick(e));
+            }
+
+            toggleMenu() {
+                if (this.isCompactMode) {
+                    drawingManager.toggleCompactMenu();
+                } else {
+                    drawingManager.toggleDrawer();
+                }
+            }
+
+            toggleCompactMode(enabled) {
+                this.isCompactMode = enabled;
+                
+                if (enabled) {
+                    drawingManager.closeDrawer();
+                } else {
+                    drawingManager.hideCompactMenu();
+                }
+            }
+
+            switchToFullMenu() {
+                drawingManager.hideCompactMenu();
+                document.getElementById('compact-mode').checked = false;
+                this.isCompactMode = false;
+                drawingManager.openDrawer();
+            }
+
+            openSettings() {
+                drawingManager.hideCompactMenu();
+                drawingManager.openDrawer();
+            }
+
+            clearCanvas() {
+                drawingEngine.clearCanvas();
+                drawingManager.closeDrawer();
+            }
+
+            clearCanvasCompact() {
+                drawingEngine.clearCanvas();
+                drawingManager.hideCompactMenu();
+            }
+
+            handleOutsideClick(e) {
+                if (this.isCompactMode && 
+                    document.getElementById('compact-menu').classList.contains('show') && 
+                    !document.getElementById('compact-menu').contains(e.target) && 
+                    !document.getElementById('floating-btn').contains(e.target)) {
+                    drawingManager.hideCompactMenu();
+                }
+            }
+
+            toggleColorVisibility(visible) {
+                const colorsSection = document.getElementById('colors-section');
+                const compactColorsItems = document.querySelectorAll('.colors-item:not(#compact-history-toggle)');
+                
+                if (visible) {
+                    colorsSection.classList.remove('colors-hidden');
+                    colorsSection.classList.add('colors-visible');
+                    compactColorsItems.forEach(item => {
+                        item.classList.remove('colors-hidden');
+                        item.classList.add('colors-visible');
+                    });
+                } else {
+                    colorsSection.classList.remove('colors-visible');
+                    colorsSection.classList.add('colors-hidden');
+                    compactColorsItems.forEach(item => {
+                        item.classList.remove('colors-visible');
+                        item.classList.add('colors-hidden');
+                    });
+                    
+                    // Hide history when disabling drawing
+                    if (colorManager.isHistoryVisible) {
+                        colorManager.toggleHistoryVisibility();
+                    }
+                }
+            }
+        }
+
+        // Drawing Manager
+        class DrawingManager {
+            constructor() {
+                this.isDrawerOpen = false;
+                this.isCompactMenuVisible = false;
+            }
+
+            openDrawer() {
+                this.isDrawerOpen = true;
+                document.getElementById('tools-drawer').classList.add('open');
+                document.getElementById('drawer-overlay').classList.add('active');
+            }
+
+            closeDrawer() {
+                this.isDrawerOpen = false;
+                document.getElementById('tools-drawer').classList.remove('open');
+                document.getElementById('drawer-overlay').classList.remove('active');
+            }
+
+            toggleDrawer() {
+                if (this.isDrawerOpen) {
+                    this.closeDrawer();
+                } else {
+                    this.openDrawer();
+                }
+            }
+
+            showCompactMenu() {
+                this.isCompactMenuVisible = true;
+                document.getElementById('compact-menu').classList.add('show');
+                this.isDrawerOpen = false;
+            }
+
+            hideCompactMenu() {
+                this.isCompactMenuVisible = false;
+                document.getElementById('compact-menu').classList.remove('show');
+                this.isDrawerOpen = false;
+            }
+
+            toggleCompactMenu() {
+                if (this.isCompactMenuVisible) {
+                    this.hideCompactMenu();
+                } else {
+                    this.showCompactMenu();
+                }
+            }
+        }
+
+        // Element SDK Manager
+        class ElementSDKManager {
+            constructor() {
+                this.initializeSDK();
+            }
+
+            async initializeSDK() {
+                if (window.elementSdk) {
+                    await window.elementSdk.init({
+                        defaultConfig,
+                        onConfigChange: this.onConfigChange.bind(this),
+                        mapToCapabilities: this.mapToCapabilities.bind(this),
+                        mapToEditPanelValues: this.mapToEditPanelValues.bind(this)
+                    });
+                }
+            }
+
+            async onConfigChange(config) {
+                const drawerTitle = document.getElementById('drawer-title');
+                const clearBtn = document.getElementById('clear-btn');
+                
+                drawerTitle.textContent = config.app_title || defaultConfig.app_title;
+                clearBtn.innerHTML = config.clear_button_text || defaultConfig.clear_button_text;
+            }
+
+            mapToCapabilities(config) {
+                return {
+                    recolorables: [],
+                    borderables: [],
+                    fontEditable: undefined,
+                    fontSizeable: undefined
+                };
+            }
+
+            mapToEditPanelValues(config) {
+                return new Map([
+                    ["app_title", config.app_title || defaultConfig.app_title],
+                    ["clear_button_text", config.clear_button_text || defaultConfig.clear_button_text]
+                ]);
+            }
+        }
+
+        // Global instances
+        let drawingEngine;
+        let toolManager;
+        let colorManager;
+        let uiManager;
+        let drawingManager;
+        let elementSDKManager;
+        let draggableButtonManager;
+
+        // Initialize application
+        function initializeApplication() {
+            drawingEngine = new DrawingEngine();
+            toolManager = new ToolManager();
+            colorManager = new ColorManager();
+            uiManager = new UIManager();
+            drawingManager = new DrawingManager();
+            elementSDKManager = new ElementSDKManager();
+            draggableButtonManager = new DraggableButtonManager();
+            
+            toolManager.updateCursor();
+        }
+
+        // Application entry point
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApplication();
+        });
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99f897c9c25e7e09',t:'MTc2MzMxMjkzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
